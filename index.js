@@ -86,7 +86,7 @@ app.get('/', async (req, res) => {
     const tracks = await makeSpotifyCall(
       req,
       spotifyApi,
-      'getMyRecentlyPlayedTracks'
+      'getMyCurrentPlayingTrack'
     );
 
     res.send(`Do the thing! <pre>${JSON.stringify(tracks, null, 2)}</pre>`);
