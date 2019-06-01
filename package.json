@@ -1,0 +1,17 @@
+{
+  "name": "concertina",
+  "version": "1.0.0",
+  "description": "A Spotify lyrics app",
+  "main": "index.js",
+  "engines": {
+    "node": "10.x"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Shah Kashani",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
