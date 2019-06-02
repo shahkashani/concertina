@@ -6,6 +6,7 @@ const passport = require('passport');
 const SpotifyStrategy = require('passport-spotify').Strategy;
 const SpotifyWebApi = require('spotify-web-api-node');
 const consolidate = require('consolidate');
+const GeniusApi = require('lyricist');
 
 const PORT = process.env.PORT || 3000;
 
@@ -13,7 +14,8 @@ const {
   SPOTIFY_REDIRECT_URI,
   SPOTIFY_CLIENT_ID,
   SPOTIFY_CLIENT_SECRET,
-  EXPRESS_SESSION_SECRET
+  EXPRESS_SESSION_SECRET,
+  GENIUS_CLIENT_ACCESS_TOKEN
 } = process.env;
 
 const SCOPE = [
@@ -22,6 +24,8 @@ const SCOPE = [
   'user-read-email',
   'user-read-private'
 ];
+
+const genius = new GeniusApi(GENIUS_CLIENT_ACCESS_TOKEN);
 
 passport.serializeUser((user, done) => {
   done(null, user);
@@ -68,21 +72,30 @@ app.engine('html', consolidate.swig);
 
 app.get('/', ensureAuthenticated, async (req, res) => {
   const { accessToken, refreshToken } = req.user;
-  const spotifyApi = new SpotifyWebApi({
+  const spotify = new SpotifyWebApi({
     accessToken,
     refreshToken,
     clientId: SPOTIFY_CLIENT_ID,
     clientSecret: SPOTIFY_CLIENT_SECRET
   });
-  const data = await spotifyApi.getMyCurrentPlayingTrack();
+  const { body } = await spotify.getMyCurrentPlayingTrack();
+  const title = `${body.item.name} by ${body.item.artists[0].name}`;
+  const lyricSearch = await genius.search(title);
+  console.log(JSON.stringify(lyricSearch, null, 2));
+
+  const lyricResult = lyricSearch ? lyricSearch[0] : null;
+  const lyrics = lyricResult
+    ? await genius.song(lyricResult.id, { fetchLyrics: true })
+    : null;
+
   res.render('index.html', {
+    lyrics: lyrics ? lyrics.lyrics : null,
     user: req.user,
-    song: JSON.stringify(data, null, 2)
+    track: body.item
   });
 });
 
 app.get('/account', ensureAuthenticated, (req, res) => {
-  console.log(req.user);
   res.render('account.html', { user: req.user });
 });
 
