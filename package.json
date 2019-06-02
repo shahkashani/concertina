@@ -18,6 +18,7 @@
     "express-session": "^1.16.1",
     "genius-api": "^0.4.1",
     "lyricist": "^2.2.2",
+    "node-vibrant": "^3.2.0-alpha",
     "passport": "^0.4.0",
     "passport-spotify": "^1.0.1",
     "spotify-web-api-node": "^4.0.0",

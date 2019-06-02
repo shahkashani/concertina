@@ -7,6 +7,7 @@ const SpotifyStrategy = require('passport-spotify').Strategy;
 const SpotifyWebApi = require('spotify-web-api-node');
 const consolidate = require('consolidate');
 const GeniusApi = require('lyricist');
+const Vibrant = require('node-vibrant');
 
 const PORT = process.env.PORT || 3000;
 
@@ -94,11 +95,16 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     const { artists, name, album } = body.item;
     const artist = artists[0].name;
     const lyrics = await getLyrics(name, artist);
+    const image = album.images[0];
+
+    const palette = await Vibrant.from(image.url).getPalette();
+
     res.render('index.html', {
       lyrics,
       name,
       artist,
-      image: album.images[0],
+      image,
+      palette,
       user: req.user,
       track: body.item
     });

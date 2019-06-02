@@ -1,4 +1,12 @@
-{% extends 'layout.html' %} {% block content %} {% if name %}
+{% extends 'layout.html' %} {% block content %} {% if name %} {% if palette %}
+<style>
+  body {
+    background: {{ palette.LightMuted.getHex() }};
+    color: {{ palette.DarkMuted.getHex() }};
+  }
+</style>
+{% endif %}
+
 <div style="max-width: {{ image.width }}px">
   <div class="cover">
     <img src="{{ image.url }}" />
