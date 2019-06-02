@@ -18,12 +18,7 @@ const {
   GENIUS_CLIENT_ACCESS_TOKEN
 } = process.env;
 
-const SCOPE = [
-  'user-read-currently-playing',
-  'user-read-recently-played',
-  'user-read-email',
-  'user-read-private'
-];
+const SCOPE = ['user-read-currently-playing'];
 
 const genius = new GeniusApi(GENIUS_CLIENT_ACCESS_TOKEN);
 
