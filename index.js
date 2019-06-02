@@ -28,7 +28,7 @@ const SCOPE = [
 const genius = new GeniusApi(GENIUS_CLIENT_ACCESS_TOKEN);
 
 const getLyrics = async (title, artist) => {
-  const results = await genius.search(`${title} by ${artist}`);
+  const results = await genius.search(`${artist} ${title}`);
   if (!Array.isArray(results) || results.length === 0) {
     return;
   }
