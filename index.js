@@ -23,11 +23,15 @@ const SCOPE = ['user-read-currently-playing'];
 const genius = new GeniusApi(GENIUS_CLIENT_ACCESS_TOKEN);
 
 const getLyrics = async (name, artist) => {
-  const results = await genius.search(`${artist} ${name}`);
+  const results = await genius.search(`"${name}" by "${artist}"`);
   if (!Array.isArray(results) || results.length === 0) {
     return;
   }
-  const match = results.find(s => s.primary_artist.name === artist);
+  const match = results.find(
+    s =>
+      s.primary_artist.name.toLowerCase() === artist.toLowerCase() ||
+      s.title.toLowerCase() === name.toLowerCase()
+  );
   const data = await genius.song(match ? match.id : results[0].id, {
     fetchLyrics: true
   });
