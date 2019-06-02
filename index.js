@@ -79,11 +79,14 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     clientSecret: SPOTIFY_CLIENT_SECRET
   });
   const { body } = await spotify.getMyCurrentPlayingTrack();
-  const title = `${body.item.name} by ${body.item.artists[0].name}`;
-  const lyricSearch = await genius.search(title);
-  console.log(JSON.stringify(lyricSearch, null, 2));
-
-  const lyricResult = lyricSearch ? lyricSearch[0] : null;
+  const artist = body.item.artists[0].name;
+  const title = body.item.name;
+  const searchTitle = `${title} by ${artist}`;
+  const lyricSearch = await genius.search(searchTitle);
+  const lyricBestMatch = lyricSearch.find(
+    s => s.primary_artist.name === artist
+  );
+  const lyricResult = lyricBestMatch ? lyricBestMatch : lyricSearch[0];
   const lyrics = lyricResult
     ? await genius.song(lyricResult.id, { fetchLyrics: true })
     : null;
