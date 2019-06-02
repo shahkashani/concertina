@@ -94,7 +94,7 @@ app.get('/', ensureAuthenticated, async (req, res) => {
       lyrics,
       name,
       artist,
-      album,
+      image: album.images[0],
       user: req.user,
       track: body.item
     });
