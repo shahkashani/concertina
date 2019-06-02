@@ -1,8 +1,11 @@
 require('dotenv').config();
 
-const SpotifyWebApi = require('spotify-web-api-node');
 const express = require('express');
 const session = require('express-session');
+const passport = require('passport');
+const SpotifyStrategy = require('passport-spotify').Strategy;
+const SpotifyWebApi = require('spotify-web-api-node');
+const consolidate = require('consolidate');
 
 const PORT = process.env.PORT || 3000;
 
@@ -13,86 +16,109 @@ const {
   EXPRESS_SESSION_SECRET
 } = process.env;
 
-const SCOPES = ['user-read-currently-playing', 'user-read-recently-played'];
-const STATE = 'concertina';
+const SCOPE = [
+  'user-read-currently-playing',
+  'user-read-recently-played',
+  'user-read-email',
+  'user-read-private'
+];
 
-const app = express();
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+
+passport.deserializeUser((obj, done) => {
+  done(null, obj);
+});
+
+passport.use(
+  new SpotifyStrategy(
+    {
+      clientID: SPOTIFY_CLIENT_ID,
+      clientSecret: SPOTIFY_CLIENT_SECRET,
+      callbackURL: `${SPOTIFY_REDIRECT_URI}/callback`
+    },
+    (accessToken, refreshToken, expires_in, profile, done) => {
+      process.nextTick(() => {
+        return done(null, { ...profile, accessToken, refreshToken });
+      });
+    }
+  )
+);
+
+var app = express();
+
+app.set('views', __dirname + '/views');
+app.set('view engine', 'ejs');
 
 app.use(
   session({
     secret: EXPRESS_SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false }
+    resave: true,
+    saveUninitialized: true
   })
 );
 
-const setAuthDataFromResponse = (req, spotifyApi, auth) => {
-  const { access_token: accessToken, refresh_token: refreshToken } = auth.body;
-  if (accessToken) {
-    spotifyApi.setAccessToken(accessToken);
-  }
-  if (refreshToken) {
-    spotifyApi.setRefreshToken(refreshToken);
-  }
-  const previousSession = getAuthData(req);
-  req.session.spotifySession = {
-    accessToken: accessToken || previousSession.accessToken,
-    refreshToken: refreshToken || previousSession.refreshToken
-  };
-};
+app.use(passport.initialize());
+app.use(passport.session());
 
-const getAuthData = req => {
-  const { spotifySession } = req.session;
-  return spotifySession || {};
-};
+app.use(express.static(__dirname + '/public'));
 
-// Just a handy wrapper that also refreshes the auth token
-const makeSpotifyCall = async (req, spotifyApi, method) => {
-  const result = await spotifyApi[method]();
-  const refresh = await spotifyApi.refreshAccessToken();
-  setAuthDataFromResponse(req, spotifyApi, refresh);
-  return result;
-};
+app.engine('html', consolidate.swig);
 
-app.get('/', async (req, res) => {
-  const { code } = req.query;
-
+app.get('/', ensureAuthenticated, async (req, res) => {
+  const { accessToken, refreshToken } = req.user;
   const spotifyApi = new SpotifyWebApi({
-    redirectUri: SPOTIFY_REDIRECT_URI,
+    accessToken,
+    refreshToken,
     clientId: SPOTIFY_CLIENT_ID,
     clientSecret: SPOTIFY_CLIENT_SECRET
   });
-
-  const { accessToken, refreshToken } = getAuthData(req);
-
-  if (!code && (!accessToken || !refreshToken)) {
-    res.redirect(spotifyApi.createAuthorizeURL(SCOPES, STATE, false));
-    return;
-  }
-
-  try {
-    if (accessToken && refreshToken) {
-      spotifyApi.setAccessToken(accessToken);
-      spotifyApi.setRefreshToken(refreshToken);
-    } else {
-      const auth = await spotifyApi.authorizationCodeGrant(code);
-      setAuthDataFromResponse(req, spotifyApi, auth);
-      // Get rid of that ?code in the URL
-      res.redirect(req.path);
-      return;
-    }
-
-    const tracks = await makeSpotifyCall(
-      req,
-      spotifyApi,
-      'getMyCurrentPlayingTrack'
-    );
-
-    res.send(`Do the thing! <pre>${JSON.stringify(tracks, null, 2)}</pre>`);
-  } catch (err) {
-    res.send(`No! ${err}`);
-  }
+  const data = await spotifyApi.getMyCurrentPlayingTrack();
+  res.render('index.html', {
+    user: req.user,
+    song: JSON.stringify(data, null, 2)
+  });
 });
 
-app.listen(PORT, () => console.log(`Listening on port ${PORT}!`));
+app.get('/account', ensureAuthenticated, (req, res) => {
+  console.log(req.user);
+  res.render('account.html', { user: req.user });
+});
+
+app.get('/login', (req, res) => {
+  res.render('login.html', { user: req.user });
+});
+
+app.get(
+  '/auth/spotify',
+  passport.authenticate('spotify', {
+    scope: SCOPE,
+    showDialog: false
+  }),
+  (req, res) => {
+    // The request will be redirected to spotify for authentication, so this function will not be called.
+  }
+);
+
+app.get(
+  '/callback',
+  passport.authenticate('spotify', { failureRedirect: '/login' }),
+  (req, res) => {
+    res.redirect('/');
+  }
+);
+
+app.get('/logout', (req, res) => {
+  req.logout();
+  res.redirect('/');
+});
+
+app.listen(PORT);
+
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect('/login');
+}
