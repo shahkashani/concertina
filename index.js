@@ -27,8 +27,8 @@ const SCOPE = [
 
 const genius = new GeniusApi(GENIUS_CLIENT_ACCESS_TOKEN);
 
-const getLyrics = async (title, artist) => {
-  const results = await genius.search(`${artist} ${title}`);
+const getLyrics = async (name, artist) => {
+  const results = await genius.search(`${artist} ${name}`);
   if (!Array.isArray(results) || results.length === 0) {
     return;
   }
@@ -91,18 +91,21 @@ app.get('/', ensureAuthenticated, async (req, res) => {
     clientSecret: SPOTIFY_CLIENT_SECRET
   });
   const { body } = await spotify.getMyCurrentPlayingTrack();
-  const artist = body.item.artists[0].name;
-  const title = body.item.name;
-  const lyrics = await getLyrics(title, artist);
-  res.render('index.html', {
-    lyrics,
-    user: req.user,
-    track: body.item
-  });
-});
-
-app.get('/account', ensureAuthenticated, (req, res) => {
-  res.render('account.html', { user: req.user });
+  if (body.item) {
+    const { artists, name, album } = body.item;
+    const artist = artists[0].name;
+    const lyrics = await getLyrics(name, artist);
+    res.render('index.html', {
+      lyrics,
+      name,
+      artist,
+      album,
+      user: req.user,
+      track: body.item
+    });
+  } else {
+    res.render('index.html');
+  }
 });
 
 app.get('/login', (req, res) => {
