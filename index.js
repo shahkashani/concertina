@@ -27,6 +27,18 @@ const SCOPE = [
 
 const genius = new GeniusApi(GENIUS_CLIENT_ACCESS_TOKEN);
 
+const getLyrics = async (title, artist) => {
+  const results = await genius.search(`${title} by ${artist}`);
+  if (!Array.isArray(results) || results.length === 0) {
+    return;
+  }
+  const match = results.find(s => s.primary_artist.name === artist);
+  const data = await genius.song(match ? match.id : results[0].id, {
+    fetchLyrics: true
+  });
+  return (data || {}).lyrics;
+};
+
 passport.serializeUser((user, done) => {
   done(null, user);
 });
@@ -81,18 +93,9 @@ app.get('/', ensureAuthenticated, async (req, res) => {
   const { body } = await spotify.getMyCurrentPlayingTrack();
   const artist = body.item.artists[0].name;
   const title = body.item.name;
-  const searchTitle = `${title} by ${artist}`;
-  const lyricSearch = await genius.search(searchTitle);
-  const lyricBestMatch = lyricSearch.find(
-    s => s.primary_artist.name === artist
-  );
-  const lyricResult = lyricBestMatch ? lyricBestMatch : lyricSearch[0];
-  const lyrics = lyricResult
-    ? await genius.song(lyricResult.id, { fetchLyrics: true })
-    : null;
-
+  const lyrics = await getLyrics(title, artist);
   res.render('index.html', {
-    lyrics: lyrics ? lyrics.lyrics : null,
+    lyrics,
     user: req.user,
     track: body.item
   });
@@ -127,7 +130,7 @@ app.get(
 
 app.get('/logout', (req, res) => {
   req.logout();
-  res.redirect('/');
+  res.redirect('/login');
 });
 
 app.listen(PORT);
@@ -136,5 +139,5 @@ function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
     return next();
   }
-  res.redirect('/login');
+  res.redirect('/auth/spotify');
 }
