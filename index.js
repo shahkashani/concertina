@@ -8,6 +8,7 @@ const SpotifyWebApi = require('spotify-web-api-node');
 const consolidate = require('consolidate');
 const GeniusApi = require('lyricist');
 const Vibrant = require('node-vibrant');
+const serveStatic = require('serve-static');
 
 const PORT = process.env.PORT || 3000;
 
@@ -37,6 +38,11 @@ const getLyrics = async (name, artist) => {
     fetchLyrics: true
   });
   return (data || {}).lyrics;
+};
+
+const colorToRgba = (color, alpha = 1) => {
+  const [r, g, b] = color.getRgb();
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
 passport.serializeUser((user, done) => {
@@ -106,7 +112,11 @@ app.get('/', ensureAuthenticated, async (req, res) => {
       image,
       palette,
       user: req.user,
-      track: body.item
+      track: body.item,
+      colors: {
+        background: colorToRgba(palette.LightMuted, 0.3),
+        text: palette.DarkMuted.getHex()
+      }
     });
   } else {
     res.render('index.html');
@@ -140,6 +150,8 @@ app.get('/logout', (req, res) => {
   req.logout();
   res.redirect('/login');
 });
+
+app.use(serveStatic('static'));
 
 app.listen(PORT);
 

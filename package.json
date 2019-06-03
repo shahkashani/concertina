@@ -21,6 +21,7 @@
     "node-vibrant": "^3.2.0-alpha",
     "passport": "^0.4.0",
     "passport-spotify": "^1.0.1",
+    "serve-static": "^1.14.1",
     "spotify-web-api-node": "^4.0.0",
     "swig": "^1.4.2"
   }
